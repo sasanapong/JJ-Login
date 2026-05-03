@@ -3,8 +3,7 @@ import {
   Lock, User, Database, ArrowRight, AlertCircle, LogOut, 
   UserCircle, Loader2, RefreshCw, CheckCircle, ShieldCheck,
   LayoutDashboard, List, Search, Award, Briefcase, ChevronRight,
-  Home, Users, Heart, ArrowLeft, Gift, XCircle, MapPin, Sparkles, ChevronLeft, X,
-  Bell, AlertTriangle, Info, ChevronDown, ChevronUp 
+  Home, Users, Heart, ArrowLeft, Gift, XCircle, MapPin, Sparkles, ChevronLeft, X
 } from 'lucide-react';
 
 // ------------------------------------------------------------------
@@ -40,17 +39,6 @@ try {
   console.error("Firebase Init Error:", e);
 }
 
-// ============================================================
-// 🔔 กำหนดรายการสวัสดิการหลักทั้งหมดที่พนักงานควรได้รับ
-// ============================================================
-const MASTER_WELFARE_LIST = [
-  { id: 'ประกันสุขภาพ',      label: 'ประกันสุขภาพ',          icon: '🏥', color: 'rose' },
-  { id: 'ประกันชีวิต',       label: 'ประกันชีวิต',           icon: '🛡️', color: 'blue' },
-  { id: 'กองทุนสำรองเลี้ยงชีพ', label: 'กองทุนสำรองเลี้ยงชีพ', icon: '💰', color: 'amber' },
-  { id: 'ประกันอุบัติเหตุ',    label: 'ประกันอุบัติเหตุ',        icon: '🚑', color: 'orange' },
-  { id: 'สวัสดิการที่พัก',     label: 'สวัสดิการที่พัก',         icon: '🏠', color: 'teal' },
-];
-
 // --- Custom Animations (Friendly & Soft UI) ---
 const customStyles = `
   @keyframes float {
@@ -58,22 +46,19 @@ const customStyles = `
     50% { transform: translateY(-15px) scale(1.01); }
     100% { transform: translateY(0px) scale(1); }
   }
-  .animate-float-slow { animation: float 12s ease-in-out infinite; }
-  .animate-float-fast { animation: float 8s ease-in-out infinite reverse; }
-
+  .animate-float-slow {
+    animation: float 12s ease-in-out infinite;
+  }
+  .animate-float-fast {
+    animation: float 8s ease-in-out infinite reverse;
+  }
   @keyframes slide-fade {
     0% { opacity: 0; transform: translateX(20px); }
     100% { opacity: 1; transform: translateX(0); }
   }
-  .animate-slide-fade { animation: slide-fade 0.3s ease-out forwards; }
-
-  /* ✨ Animation สำหรับ banner แจ้งเตือน */
-  @keyframes banner-in {
-    0%   { opacity: 0; transform: translateY(-12px) scale(0.97); }
-    100% { opacity: 1; transform: translateY(0)      scale(1); }
+  .animate-slide-fade {
+    animation: slide-fade 0.3s ease-out forwards;
   }
-  .animate-banner-in { animation: banner-in 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-
   .glass-panel {
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(24px);
@@ -89,100 +74,6 @@ const customStyles = `
   ::-webkit-scrollbar { width: 0px; background: transparent; }
 `;
 
-// ============================================================
-// 🔔 Component: WelfareAlertBanner
-// แสดงรายการสวัสดิการที่ยังไม่ได้ขึ้นทะเบียน
-// ============================================================
-function WelfareAlertBanner({ registeredWelfares, loading }) {
-  const [expanded, setExpanded] = useState(false);
-
-  // เปรียบเทียบว่าสวัสดิการไหนยังขาด
-  const missingWelfares = MASTER_WELFARE_LIST.filter(
-    (w) => !registeredWelfares.some(
-      (r) => r.toLowerCase().trim() === w.id.toLowerCase().trim()
-    )
-  );
-
-  if (loading || missingWelfares.length === 0) return null;
-
-  const colorMap = {
-    rose:   { bg: 'bg-rose-50',   border: 'border-rose-200/80',  badge: 'bg-rose-100 text-rose-600',   dot: 'bg-rose-400'   },
-    blue:   { bg: 'bg-blue-50',   border: 'border-blue-200/80',  badge: 'bg-blue-100 text-blue-600',   dot: 'bg-blue-400'   },
-    amber:  { bg: 'bg-amber-50',  border: 'border-amber-200/80', badge: 'bg-amber-100 text-amber-600', dot: 'bg-amber-400'  },
-    orange: { bg: 'bg-orange-50', border: 'border-orange-200/80',badge: 'bg-orange-100 text-orange-600',dot: 'bg-orange-400'},
-    teal:   { bg: 'bg-teal-50',   border: 'border-teal-200/80',  badge: 'bg-teal-100 text-teal-600',   dot: 'bg-teal-400'   },
-  };
-
-  const visibleItems = expanded ? missingWelfares : missingWelfares.slice(0, 2);
-  const hasMore = missingWelfares.length > 2;
-
-  return (
-    <div className="animate-banner-in mb-6">
-      <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-[24px] p-5 shadow-lg shadow-amber-500/20 relative overflow-hidden">
-        <div className="absolute top-[-20px] right-[-20px] w-[120px] h-[120px] bg-white/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute bottom-[-30px] left-[30%] w-[80px] h-[80px] bg-white/10 rounded-full blur-xl pointer-events-none" />
-
-        <div className="relative z-10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-11 h-11 bg-white/20 backdrop-blur-md rounded-[14px] flex items-center justify-center border border-white/20">
-                <Bell className="w-5 h-5 text-white animate-pulse" />
-              </div>
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow-sm">
-                <span className="text-[10px] font-black text-amber-500">{missingWelfares.length}</span>
-              </span>
-            </div>
-            <div>
-              <p className="text-white font-extrabold text-[16px] leading-tight">สวัสดิการที่ยังไม่ลงทะเบียน</p>
-              <p className="text-amber-100 text-[13px] font-medium mt-0.5">กรุณาติดต่อฝ่าย HR เพื่อดำเนินการ</p>
-            </div>
-          </div>
-
-          <div className="bg-white/20 border border-white/30 rounded-[12px] px-3 py-1.5 text-center">
-            <p className="text-white font-black text-[20px] leading-none">{missingWelfares.length}</p>
-            <p className="text-amber-100 text-[10px] font-semibold">รายการ</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-3 flex flex-col gap-2">
-        {visibleItems.map((item) => {
-          const colors = colorMap[item.color] || colorMap.blue;
-          return (
-            <div key={item.id} className={`flex items-center justify-between p-3.5 rounded-[16px] border ${colors.bg} ${colors.border} transition-all duration-300`}>
-              <div className="flex items-center gap-3">
-                <div className="text-2xl">{item.icon}</div>
-                <div>
-                  <p className="text-[14px] font-bold text-slate-800">{item.label}</p>
-                </div>
-              </div>
-              <span className={`px-2.5 py-1 text-[11px] font-bold rounded-full ${colors.badge}`}>
-                รอดำเนินการ
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {hasMore && (
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="w-full mt-2 py-2 flex items-center justify-center gap-1.5 text-[13px] font-bold text-slate-500 hover:text-slate-700 transition-colors"
-        >
-          {expanded ? (
-            <>ย่อรายการ <ChevronUp className="w-4 h-4" /></>
-          ) : (
-            <>ดูเพิ่มเติมอีก {missingWelfares.length - 2} รายการ <ChevronDown className="w-4 h-4" /></>
-          )}
-        </button>
-      )}
-    </div>
-  );
-}
-
-// ============================================================
-// 📱 Component: App หลัก
-// ============================================================
 export default function App() {
   const [view, setView] = useState('login'); 
   const [loading, setLoading] = useState(false);     
@@ -199,6 +90,7 @@ export default function App() {
   
   // --- ระบบจัดการ Detail View แบบ Swipeable ---
   const [selectedIndex, setSelectedIndex] = useState(null); 
+  
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
 
@@ -226,7 +118,7 @@ export default function App() {
     setLoading(true);
 
     if (!auth) {
-      setError('⚠️ ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาตรวจสอบ Firebase Config');
+      setError('⚠️ ไม่สามารถเชื่อมต่อฐานข้อมูลได้');
       setLoading(false);
       return;
     }
@@ -315,11 +207,11 @@ export default function App() {
   };
 
   // Derived Data
-  const myWelfares = [...new Set(userDataList.map(item => item.product).filter(Boolean))];
+  const welfareCategories = [...new Set(userDataList.map(item => item.sheet_name || item.product).filter(Boolean))];
 
   const displayData = userDataList.filter(item => {
-    const matchWelfare = selectedWelfare === 'all' || item.product === selectedWelfare;
-    const searchString = `${item['ชื่อ-สกุล'] || ''} ${item.product} ${item.fullname || ''}`.toLowerCase();
+    const matchWelfare = selectedWelfare === 'all' || (item.sheet_name || item.product) === selectedWelfare;
+    const searchString = `${item['ชื่อ-สกุล'] || ''} ${item.product || ''} ${item.sheet_name || ''} ${item.fullname || ''}`.toLowerCase();
     const matchSearch = searchString.includes(searchQuery.toLowerCase());
     return matchWelfare && matchSearch;
   });
@@ -364,7 +256,7 @@ export default function App() {
             </div>
             <div>
               <h2 className="text-[32px] font-extrabold tracking-tight text-slate-800 leading-tight">
-                MyWelfare
+                ตรวจสอบข้อมูลสวัดิการ
               </h2>
               <p className="text-[15px] text-slate-500 font-medium mt-1">
                 ระบบจัดการสวัสดิการพนักงาน
@@ -444,7 +336,7 @@ export default function App() {
                         <Heart className="w-5 h-5" fill="currentColor" />
                     </div>
                     <span className="text-[18px] font-bold tracking-tight text-slate-800">
-                        MyWelfare
+                        ตรวจสอบข้อมูลสวัดิการ
                     </span>
                 </div>
 
@@ -482,14 +374,6 @@ export default function App() {
                 <p className="text-[16px] text-slate-500 font-medium">นี่คือข้อมูลสวัสดิการปัจจุบันของคุณ</p>
             </div>
 
-            {/* 🚀 ระบบแจ้งเตือนสวัสดิการที่ยังไม่ลงทะเบียน (ดึงรายชื่อจาก myWelfares แบบอัตโนมัติ) */}
-            {!dataLoading && (
-              <WelfareAlertBanner 
-                registeredWelfares={myWelfares} 
-                loading={dataLoading} 
-              />
-            )}
-
             {/* Segmented Control Friendly Style */}
             {!isCompletelyUnregistered && !dataLoading && (
               <div className="bg-slate-200/60 p-1.5 rounded-[18px] flex mb-8 overflow-hidden">
@@ -501,7 +385,7 @@ export default function App() {
                   >
                       ทั้งหมด
                   </button>
-                  {myWelfares.map(welfare => (
+                  {welfareCategories.map(welfare => (
                       <button
                           key={welfare}
                           onClick={() => setSelectedWelfare(welfare)}
@@ -577,13 +461,12 @@ export default function App() {
                                                   {renderCellData(row.fullname || row['ชื่อ-สกุล'])}
                                                 </p>
                                                 <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                                                <span className="text-[13px] font-bold text-emerald-500">ลงทะเบียนแล้ว</span>
+                                                <span className="text-[13px] font-bold text-emerald-500">อนุมัติแล้ว</span>
                                             </div>
                                         </div>
                                     </div>
                                     <div className="w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
-                                        {/* โค้ดที่ขาดหายไป ถูกเติมเต็มตรงนี้ครับ */}
-                                        <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                                        <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-indigo-500 transition-colors transform group-hover:translate-x-0.5" />
                                     </div>
                                 </div>
                             ))}
@@ -592,64 +475,138 @@ export default function App() {
                 </div>
             )}
         </div>
-
-        {/* ========================================================= */}
-        {/* Detail View Modal (Popup) เมื่อกดดูรายละเอียดสวัสดิการ */}
-        {/* ========================================================= */}
-        {viewingDetail && (
-          <div className="fixed inset-0 z-50 flex justify-center items-end sm:items-center bg-slate-900/40 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-300">
-            <div 
-              onTouchStart={onTouchStart}
-              onTouchMove={onTouchMove}
-              onTouchEnd={onTouchEnd}
-              className="w-full max-w-lg bg-white rounded-t-[32px] sm:rounded-[32px] p-6 pb-12 sm:pb-6 shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300"
-            >
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-[16px] flex items-center justify-center">
-                    <Award className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-slate-800">{viewingDetail.product}</h3>
-                    <p className="text-sm text-slate-500 font-medium">รายละเอียดเพิ่มเติม</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setSelectedIndex(null)}
-                  className="w-10 h-10 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full flex items-center justify-center transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                {Object.entries(viewingDetail)
-                  .filter(([key]) => !['id', 'product'].includes(key)) // ซ่อน key ที่ไม่จำเป็นต้องแสดงในตาราง
-                  .map(([key, value], i) => (
-                  <div key={i} className="flex flex-col bg-slate-50 p-4 rounded-[16px] border border-slate-100">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{key}</span>
-                    <span className="text-[15px] font-semibold text-slate-800 break-words">
-                      {value && typeof value === 'object' && value.seconds 
-                        ? new Date(value.seconds * 1000).toLocaleString('th-TH') 
-                        : renderCellData(value)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* ป้ายบอกใบ้การปัดซ้ายขวา (สำหรับมือถือ) */}
-              {displayData.length > 1 && (
-                <div className="mt-6 flex justify-center items-center gap-4 text-slate-400 text-sm">
-                  <ChevronLeft className="w-4 h-4 animate-pulse" />
-                  <span>ปัดซ้าย-ขวา เพื่อดูรายการถัดไป</span>
-                  <ChevronRight className="w-4 h-4 animate-pulse" />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
       </div>
+
+      {/* ========================================================
+          MODAL DETAIL VIEW (Swipeable Friendly Card) 
+          ======================================================== */}
+      {viewingDetail && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center sm:p-6 animate-in fade-in duration-300">
+            {/* Soft Backdrop Overlay */}
+            <div 
+                className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm transition-opacity"
+                onClick={() => setSelectedIndex(null)}
+            ></div>
+
+            {/* Bottom Sheet / Centered Card */}
+            <div 
+                className="w-full md:max-w-[460px] bg-slate-50 rounded-t-[32px] md:rounded-[32px] shadow-2xl relative z-10 animate-in slide-in-from-bottom-full md:slide-in-from-bottom-8 duration-400 overflow-hidden flex flex-col max-h-[90vh]"
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+            >
+                {/* Drag Indicator for Mobile */}
+                <div className="md:hidden w-12 h-1.5 bg-slate-300 rounded-full mx-auto my-3"></div>
+
+                {/* Content wrapper with key for slide animation */}
+                <div key={selectedIndex} className="flex flex-col flex-1 overflow-y-auto animate-slide-fade [&::-webkit-scrollbar]:hidden">
+                    
+                    {/* Header (Friendly Gradient) */}
+                    <div className="bg-gradient-to-br from-indigo-500 to-blue-500 p-6 sm:p-8 relative overflow-hidden text-white">
+                        <div className="absolute top-[-30px] right-[-20px] w-[150px] h-[150px] bg-white/10 rounded-full blur-2xl"></div>
+                        
+                        <div className="flex justify-between items-start relative z-10 mb-6">
+                            {/* Navigation Arrows for Swiping */}
+                            <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-md p-1 rounded-full border border-white/10">
+                                <button 
+                                    onClick={handlePrevDetail}
+                                    className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white hover:text-indigo-600 transition-all"
+                                >
+                                    <ChevronLeft className="w-5 h-5" />
+                                </button>
+                                <span className="text-[13px] font-bold px-2">
+                                    {selectedIndex + 1} / {displayData.length}
+                                </span>
+                                <button 
+                                    onClick={handleNextDetail}
+                                    className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white hover:text-indigo-600 transition-all"
+                                >
+                                    <ChevronRight className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <button 
+                                onClick={() => setSelectedIndex(null)}
+                                className="w-9 h-9 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="relative z-10 flex items-center gap-4">
+                            <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-[16px] flex items-center justify-center border border-white/20 shadow-inner">
+                                <Award className="w-7 h-7 text-white" />
+                            </div>
+                            <div>
+                                <h3 className="text-[22px] sm:text-[24px] font-bold leading-tight">
+                                    {viewingDetail.product}
+                                </h3>
+                                <div className="inline-flex items-center gap-1.5 bg-emerald-400/20 px-2.5 py-1 rounded-full mt-1.5 border border-emerald-400/30">
+                                    <CheckCircle className="w-3.5 h-3.5 text-emerald-100" />
+                                    <span className="text-[12px] font-bold text-emerald-50">อนุมัติเรียบร้อย</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Body Details */}
+                    <div className="p-6 space-y-4 pb-10 bg-slate-50">
+                        
+                        {/* ข้อมูลบุคคล */}
+                        <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="bg-indigo-50 p-2 rounded-xl">
+                                    <User className="w-5 h-5 text-indigo-500" />
+                                </div>
+                                <h4 className="text-[15px] font-bold text-slate-800">ข้อมูลผู้รับสิทธิ์</h4>
+                            </div>
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-[13px] text-slate-500 mb-1">ชื่อ-นามสกุล</p>
+                                    <p className="text-[16px] font-bold text-slate-800">{renderCellData(viewingDetail.fullname || viewingDetail['ชื่อ-สกุล'])}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[13px] text-slate-500 mb-1">ความเกี่ยวข้อง</p>
+                                    <p className="text-[15px] font-bold text-slate-800">{renderCellData(viewingDetail.relationship || 'พนักงาน')}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Address Block */}
+                        {(viewingDetail.house_no || viewingDetail.province) && (
+                            <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="bg-blue-50 p-2 rounded-xl">
+                                        <MapPin className="w-5 h-5 text-blue-500" />
+                                    </div>
+                                    <h4 className="text-[15px] font-bold text-slate-800">ที่อยู่จัดส่ง / ติดต่อ</h4>
+                                </div>
+                                <div className="grid grid-cols-2 gap-y-4 gap-x-4 bg-slate-50 p-4 rounded-[16px]">
+                                    <div>
+                                        <p className="text-[12px] text-slate-500 mb-0.5">บ้านเลขที่ / หมู่</p>
+                                        <p className="text-[14px] font-bold text-slate-800 truncate">{renderCellData(viewingDetail.house_no)} {viewingDetail.moo && `ม.${viewingDetail.moo}`}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[12px] text-slate-500 mb-0.5">ตำบล / อำเภอ</p>
+                                        <p className="text-[14px] font-bold text-slate-800 truncate">{renderCellData(viewingDetail.subdistrict)} {renderCellData(viewingDetail.district)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[12px] text-slate-500 mb-0.5">จังหวัด</p>
+                                        <p className="text-[14px] font-bold text-slate-800 truncate">{renderCellData(viewingDetail.province)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[12px] text-slate-500 mb-0.5">รหัสไปรษณีย์</p>
+                                        <p className="text-[14px] font-bold text-slate-800">{renderCellData(viewingDetail.zipcode)}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+
     </div>
   );
 }
