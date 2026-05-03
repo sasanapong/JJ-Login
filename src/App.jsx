@@ -11,7 +11,7 @@ import {
 // ------------------------------------------------------------------
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { getFirestore, collection, getDocs, query, where } from "firebase/firestore";
+import { getFirestore, collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
 
 // ==========================================
 // ⚠️ ส่วนที่ต้องแก้ไข (FIREBASE CONFIGURATION) ⚠️
@@ -74,6 +74,12 @@ const customStyles = `
   ::-webkit-scrollbar { width: 0px; background: transparent; }
 `;
 
+// ==========================================
+// ⚠️ เพิ่ม URL ของ Google Apps Script Web App ที่นี่ ⚠️
+// ==========================================
+const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyvlLrOjXETOX9dTnG3T2QNVPAOm08R5aWjjJV0ztJhDsxeZRKGvCWlJ5k3ExWjACX5uw/exec"; 
+// ==========================================
+
 export default function App() {
   const [view, setView] = useState('login'); 
   const [loading, setLoading] = useState(false);     
@@ -90,6 +96,63 @@ export default function App() {
   
   // --- ระบบจัดการ Detail View แบบ Swipeable ---
   const [selectedIndex, setSelectedIndex] = useState(null); 
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({});
+  const [updateLoading, setUpdateLoading] = useState(false);
+
+  // ฟังก์ชันอัปเดตที่อยู่
+  const handleUpdateAddress = async () => {
+    if (!db || !viewingDetail?.id) return;
+    setUpdateLoading(true);
+    try {
+      const docRef = doc(db, "data", viewingDetail.id);
+      const updatePayload = {
+        house_no: editData.house_no || '',
+        moo: editData.moo || '',
+        subdistrict: editData.subdistrict || '',
+        district: editData.district || '',
+        province: editData.province || '',
+        zipcode: editData.zipcode || '',
+        last_edited_at: new Date(),
+        last_edited_by: user.username,
+        is_client_edited: true // flag บอกว่ามีการแก้จากแอป
+      };
+      
+      await updateDoc(docRef, updatePayload);
+      
+      // --- เพิ่มการบันทึกลง Google Sheets ทันที ---
+      if (GAS_WEB_APP_URL && GAS_WEB_APP_URL !== "YOUR_GAS_WEB_APP_URL_HERE") {
+        try {
+          fetch(GAS_WEB_APP_URL, {
+            method: 'POST',
+            mode: 'no-cors', // สำคัญสำหรับ Google Apps Script
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: viewingDetail.id,
+              sheet_name: viewingDetail.sheet_name,
+              ...updatePayload
+            })
+          });
+        } catch (sheetErr) {
+          console.error("Sync to Sheet failed", sheetErr);
+        }
+      }
+      // ---------------------------------------
+      
+      // อัปเดต state ในเครื่อง
+      const updatedList = userDataList.map(item => 
+        item.id === viewingDetail.id ? { ...item, ...updatePayload } : item
+      );
+      setUserDataList(updatedList);
+      setIsEditing(false);
+      alert('บันทึกการแก้ไขที่อยู่เรียบร้อยแล้ว');
+    } catch (err) {
+      console.error("Update failed", err);
+      alert('เกิดข้อผิดพลาดในการบันทึก');
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
   
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
@@ -454,7 +517,7 @@ export default function App() {
                                         </div>
                                         <div>
                                             <p className="text-[17px] font-bold text-slate-800 group-hover:text-indigo-600 transition-colors mb-0.5">
-                                              {renderCellData(row.product)}
+                                              {renderCellData(row.sheet_name || row.product)}
                                             </p>
                                             <div className="flex items-center gap-2">
                                                 <p className="text-[14px] text-slate-500 font-medium">
@@ -485,7 +548,10 @@ export default function App() {
             {/* Soft Backdrop Overlay */}
             <div 
                 className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm transition-opacity"
-                onClick={() => setSelectedIndex(null)}
+                onClick={() => {
+                  setSelectedIndex(null);
+                  setIsEditing(false);
+                }}
             ></div>
 
             {/* Bottom Sheet / Centered Card */}
@@ -526,7 +592,10 @@ export default function App() {
                             </div>
 
                             <button 
-                                onClick={() => setSelectedIndex(null)}
+                                onClick={() => {
+                                  setSelectedIndex(null);
+                                  setIsEditing(false);
+                                }}
                                 className="w-9 h-9 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center transition-colors"
                             >
                                 <X className="w-5 h-5" />
@@ -539,7 +608,7 @@ export default function App() {
                             </div>
                             <div>
                                 <h3 className="text-[22px] sm:text-[24px] font-bold leading-tight">
-                                    {viewingDetail.product}
+                                    {viewingDetail.sheet_name || viewingDetail.product}
                                 </h3>
                                 <div className="inline-flex items-center gap-1.5 bg-emerald-400/20 px-2.5 py-1 rounded-full mt-1.5 border border-emerald-400/30">
                                     <CheckCircle className="w-3.5 h-3.5 text-emerald-100" />
@@ -573,7 +642,118 @@ export default function App() {
                         </div>
 
                         {/* Address Block */}
-                        {(viewingDetail.house_no || viewingDetail.province) && (
+                        {(viewingDetail.sheet_name === 'ของขวัญวันเกิด') ? (
+                            <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="bg-blue-50 p-2 rounded-xl">
+                                            <MapPin className="w-5 h-5 text-blue-500" />
+                                        </div>
+                                        <h4 className="text-[15px] font-bold text-slate-800">ที่อยู่จัดส่ง (แก้ไขได้)</h4>
+                                    </div>
+                                    {!isEditing ? (
+                                      <button 
+                                        onClick={() => {
+                                          setIsEditing(true);
+                                          setEditData({ ...viewingDetail });
+                                        }}
+                                        className="text-[13px] font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition-colors"
+                                      >
+                                        แก้ไขที่อยู่
+                                      </button>
+                                    ) : (
+                                      <div className="flex gap-2">
+                                        <button 
+                                          onClick={() => setIsEditing(false)}
+                                          className="text-[13px] font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full"
+                                        >
+                                          ยกเลิก
+                                        </button>
+                                        <button 
+                                          onClick={handleUpdateAddress}
+                                          disabled={updateLoading}
+                                          className="text-[13px] font-bold text-white bg-indigo-600 px-3 py-1.5 rounded-full shadow-sm disabled:opacity-50"
+                                        >
+                                          {updateLoading ? '...' : 'บันทึก'}
+                                        </button>
+                                      </div>
+                                    )}
+                                </div>
+                                
+                                {isEditing ? (
+                                  <div className="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-[16px]">
+                                      <div className="col-span-2">
+                                          <label className="text-[11px] font-bold text-slate-400 uppercase">บ้านเลขที่ / หมู่</label>
+                                          <div className="flex gap-2 mt-1">
+                                            <input 
+                                              className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm"
+                                              value={editData.house_no || ''} 
+                                              onChange={(e) => setEditData({...editData, house_no: e.target.value})}
+                                              placeholder="เลขที่"
+                                            />
+                                            <input 
+                                              className="w-20 p-2 bg-white border border-slate-200 rounded-lg text-sm"
+                                              value={editData.moo || ''} 
+                                              onChange={(e) => setEditData({...editData, moo: e.target.value})}
+                                              placeholder="หมู่"
+                                            />
+                                          </div>
+                                      </div>
+                                      <div>
+                                          <label className="text-[11px] font-bold text-slate-400 uppercase">ตำบล</label>
+                                          <input 
+                                            className="w-full p-2 mt-1 bg-white border border-slate-200 rounded-lg text-sm"
+                                            value={editData.subdistrict || ''} 
+                                            onChange={(e) => setEditData({...editData, subdistrict: e.target.value})}
+                                          />
+                                      </div>
+                                      <div>
+                                          <label className="text-[11px] font-bold text-slate-400 uppercase">อำเภอ</label>
+                                          <input 
+                                            className="w-full p-2 mt-1 bg-white border border-slate-200 rounded-lg text-sm"
+                                            value={editData.district || ''} 
+                                            onChange={(e) => setEditData({...editData, district: e.target.value})}
+                                          />
+                                      </div>
+                                      <div>
+                                          <label className="text-[11px] font-bold text-slate-400 uppercase">จังหวัด</label>
+                                          <input 
+                                            className="w-full p-2 mt-1 bg-white border border-slate-200 rounded-lg text-sm"
+                                            value={editData.province || ''} 
+                                            onChange={(e) => setEditData({...editData, province: e.target.value})}
+                                          />
+                                      </div>
+                                      <div>
+                                          <label className="text-[11px] font-bold text-slate-400 uppercase">รหัสไปรษณีย์</label>
+                                          <input 
+                                            className="w-full p-2 mt-1 bg-white border border-slate-200 rounded-lg text-sm"
+                                            value={editData.zipcode || ''} 
+                                            onChange={(e) => setEditData({...editData, zipcode: e.target.value})}
+                                          />
+                                      </div>
+                                  </div>
+                                ) : (
+                                  <div className="grid grid-cols-2 gap-y-4 gap-x-4 bg-slate-50 p-4 rounded-[16px]">
+                                      <div>
+                                          <p className="text-[12px] text-slate-500 mb-0.5">บ้านเลขที่ / หมู่</p>
+                                          <p className="text-[14px] font-bold text-slate-800 truncate">{renderCellData(viewingDetail.house_no)} {viewingDetail.moo && `ม.${viewingDetail.moo}`}</p>
+                                      </div>
+                                      <div>
+                                          <p className="text-[12px] text-slate-500 mb-0.5">ตำบล / อำเภอ</p>
+                                          <p className="text-[14px] font-bold text-slate-800 truncate">{renderCellData(viewingDetail.subdistrict)} {renderCellData(viewingDetail.district)}</p>
+                                      </div>
+                                      <div>
+                                          <p className="text-[12px] text-slate-500 mb-0.5">จังหวัด</p>
+                                          <p className="text-[14px] font-bold text-slate-800 truncate">{renderCellData(viewingDetail.province)}</p>
+                                      </div>
+                                      <div>
+                                          <p className="text-[12px] text-slate-500 mb-0.5">รหัสไปรษณีย์</p>
+                                          <p className="text-[14px] font-bold text-slate-800">{renderCellData(viewingDetail.zipcode)}</p>
+                                      </div>
+                                  </div>
+                                )}
+                            </div>
+                        ) : (viewingDetail.house_no || viewingDetail.province) && (
                             <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 p-5">
                                 <div className="flex items-center gap-3 mb-4">
                                     <div className="bg-blue-50 p-2 rounded-xl">
