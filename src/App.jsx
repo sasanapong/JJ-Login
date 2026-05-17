@@ -20,8 +20,19 @@ const FB = {
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId:             import.meta.env.VITE_FIREBASE_APP_ID,
 };
+
 let auth, db;
-try { const a=initializeApp(FB); auth=getAuth(a); db=getFirestore(a); } catch(e){}
+try {
+  if (FB.apiKey && FB.projectId) {
+    const a = initializeApp(FB);
+    auth = getAuth(a);
+    db = getFirestore(a);
+  } else {
+    console.warn("Firebase configuration is missing. Please check your .env file and ensure all VITE_FIREBASE_* variables are set.");
+  }
+} catch (e) {
+  console.error("Firebase initialization failed:", e);
+}
 
 const GAS = import.meta.env.VITE_GAS_URL;
 // ─── Analytics (เปิด ปิดการเก็บข้อมูล) ───────────────────────────────────────────────────────────────
@@ -729,9 +740,9 @@ const getTimestamp = (v) => {
 };
 
 const T = {
-  xs:11, sm:12, base:13, md:14, lg:15, xl:16, '2xl':18, '3xl':22,
+  xs:10, sm:11, base:12, md:13, lg:14, xl:15, '2xl':17, '3xl':20,
   medium:500, semibold:600, bold:700, extrabold:800, black:900,
-  md_r:12, lg_r:16, xl_r:20, '2xl_r':24,
+  md_r:10, lg_r:14, xl_r:18, '2xl_r':22,
   slate50:'#f8fafc', slate100:'#f1f5f9', slate200:'#e2e8f0',
   slate400:'#94a3b8', slate500:'#64748b', slate600:'#475569',
   slate700:'#334155', slate800:'#1e293b', slate900:'#0f172a',
@@ -1630,7 +1641,10 @@ html,body,*{font-family:'Noto Sans Thai',sans-serif;}
 @keyframes shimmer   {0%{background-position:-200%}100%{background-position:200%}}
 @keyframes spin      {to{transform:rotate(360deg)}}
 @keyframes bounceIn  {0%{opacity:0;transform:scale(.7)}60%{transform:scale(1.06)}80%{transform:scale(.97)}100%{opacity:1;transform:scale(1)}}
-@keyframes slideUp   {from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:none}}
+@keyframes slideUp {
+  from { opacity: 0; transform: translate(-50%, 100%); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
 @keyframes pulseDot  {0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.6}}
 @keyframes pulseRing {0%{transform:scale(.8);opacity:.8}100%{transform:scale(2.2);opacity:0}}
 @keyframes skel      {0%{background-position:-300px 0}100%{background-position:300px 0}}
@@ -1664,7 +1678,28 @@ html,body,*{font-family:'Noto Sans Thai',sans-serif;}
 .aSU  {animation:slideUp  .44s cubic-bezier(.22,.68,0,1.2) both}
 .floA {animation:float 11s ease-in-out infinite}
 .floB {animation:float 8s  ease-in-out infinite reverse}
-.spin {animation:spin 1s linear infinite}
+.spin {animation:spin 1s linear infinite}.editBtnFx {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.editBtnFx:active {
+  transform: scale(0.93);
+  filter: brightness(0.9);
+}
+@media (hover: hover) and (pointer: fine) {
+  .editBtnFx:hover {
+    transform: scale(1.04);
+    filter: brightness(0.96);
+  }
+}
+.editBtnFx:disabled {
+  cursor: not-allowed;
+}
+.editBtnFx:disabled:active {
+  transform: none;
+  filter: none;
+}
 
 .shim{
   background:linear-gradient(90deg,#6366f1,#38bdf8,#8b5cf6,#6366f1);
@@ -1848,36 +1883,70 @@ const SkeletonRow = ({w='60%'}) => (
     <div className="skel" style={{width:w,height:12}}/>
   </div>
 );
-
-const EditBtn = ({onClick,label='แก้ไข',color='#6366f1'}) => (
-  <button onClick={onClick} style={{display:'flex',alignItems:'center',gap:5,
-    background:`${color}15`,color,padding:'6px 12px',borderRadius:100,
-    fontSize:T.sm,fontWeight:T.bold,transition:'all .18s'}}
-    onMouseEnter={e=>{e.currentTarget.style.background=`${color}28`;e.currentTarget.style.transform='scale(1.04)';}}
-    onMouseLeave={e=>{e.currentTarget.style.background=`${color}15`;e.currentTarget.style.transform='';}}>
-    <Edit3 size={12}/>{label}
-  </button>
-);
-
-const SaveCancelBtns = ({onSave,onCancel,loading,g1,g2,t}) => (   // ← เพิ่ม ,t
-  <div style={{display:'flex',gap:6}}>
-    <button onClick={onCancel} style={{display:'flex',alignItems:'center',gap:4,
-      background:'#f1f5f9',color:T.slate600,padding:'6px 12px',borderRadius:100,
-      fontSize:T.sm,fontWeight:T.bold,transition:'all .15s'}}
-      onMouseEnter={e=>e.currentTarget.style.background='#e2e8f0'}
-      onMouseLeave={e=>e.currentTarget.style.background='#f1f5f9'}>
-      <X size={12}/>{t.cancel}                                     {/* ← เปลี่ยน */}
+const EditBtn = ({ onClick, label = 'แก้ไข', color = '#6366f1' }) => {
+  const { addRipple, Ripples } = useRipple();
+  return (
+    <button
+      className="editBtnFx"
+      onClick={e => { addRipple(e); onClick(e); }}
+      style={{
+        position: 'relative', overflow: 'hidden',
+        display: 'flex', alignItems: 'center', gap: 5,
+        background: `${color}15`, color,
+        padding: '6px 12px', borderRadius: 100,
+        fontSize: T.sm, fontWeight: T.bold,
+        border: 'none',
+        WebkitTapHighlightColor: 'transparent',
+        transition: 'transform .15s ease, filter .15s ease, box-shadow .15s ease',
+      }}>
+      <Ripples />
+      <Edit3 size={12} />{label}
     </button>
-    <button onClick={onSave} disabled={loading} style={{display:'flex',alignItems:'center',gap:4,
-      background:`linear-gradient(135deg,${g1},${g2})`,color:'#fff',
-      padding:'6px 14px',borderRadius:100,fontSize:T.sm,fontWeight:T.bold,
-      opacity:loading?.6:1,boxShadow:`0 4px 12px ${g1}40`,transition:'all .18s'}}
-      onMouseEnter={e=>{if(!loading){e.currentTarget.style.transform='scale(1.04)';e.currentTarget.style.boxShadow=`0 6px 18px ${g1}55`;}}}
-      onMouseLeave={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow=`0 4px 12px ${g1}40`;}}>
-      {loading?<Loader2 size={12} className="spin"/>:<><Check size={12}/><span>{t.save}</span></>}  {/* ← เปลี่ยน */}
-    </button>
-  </div>
-);
+  );
+};
+const SaveCancelBtns = ({ onSave, onCancel, loading, g1, g2, t }) => {
+  const cancelRipple = useRipple();
+  const saveRipple   = useRipple();
+  return (
+    <div style={{ display: 'flex', gap: 6 }}>
+      <button
+        className="editBtnFx"
+        onClick={e => { cancelRipple.addRipple(e); onCancel(e); }}
+        style={{
+          position: 'relative', overflow: 'hidden',
+          display: 'flex', alignItems: 'center', gap: 4,
+          background: '#f1f5f9', color: T.slate600,
+          padding: '6px 12px', borderRadius: 100,
+          fontSize: T.sm, fontWeight: T.bold,
+          border: 'none',
+          WebkitTapHighlightColor: 'transparent',
+          transition: 'transform .15s ease, filter .15s ease',
+        }}>
+        <cancelRipple.Ripples />
+        <X size={12} />{t.cancel}
+      </button>
+      <button
+        className="editBtnFx"
+        onClick={e => { if (!loading) { saveRipple.addRipple(e); onSave(e); } }}
+        disabled={loading}
+        style={{
+          position: 'relative', overflow: 'hidden',
+          display: 'flex', alignItems: 'center', gap: 4,
+          background: `linear-gradient(135deg,${g1},${g2})`, color: '#fff',
+          padding: '6px 14px', borderRadius: 100,
+          fontSize: T.sm, fontWeight: T.bold,
+          border: 'none',
+          opacity: loading ? .6 : 1,
+          boxShadow: `0 4px 12px ${g1}40`,
+          WebkitTapHighlightColor: 'transparent',
+          transition: 'transform .15s ease, box-shadow .15s ease, filter .15s ease',
+        }}>
+        <saveRipple.Ripples />
+        {loading ? <Loader2 size={12} className="spin" /> : <><Check size={12} /><span>{t.save}</span></>}
+      </button>
+    </div>
+  );
+};
 
 const RippleRow = ({children, onClick, style={}}) => {
   const {addRipple, Ripples} = useRipple();
@@ -1983,7 +2052,10 @@ export default function App() {
   const [toast, setToast] = useState({ message: '', type: 'success' });   // ← เพิ่ม
   
 
-  const [tx,setTx]=useState(null); const [ty,setTy]=useState(null);
+  const [tx,setTx]=useState(null);
+const [ty,setTy]=useState(null);
+const [tyStart,setTyStart]=useState(null);
+const [tyEnd,setTyEnd]=useState(null);
 
   const employeeRecord = useMemo(() => {
     return dataList.find(it => {
@@ -2141,9 +2213,30 @@ if ((medBalanceRecord || familyMedRecord) && isWelfareEnabled('ค่ารั�
   const next = ()=>{ if(curIdx<allKeys.length-1) open(allKeys[curIdx+1]); };
   const prev = ()=>{ if(curIdx>0)                open(allKeys[curIdx-1]); };
 
-  const onTS=e=>{setTy(null);setTx(e.targetTouches[0].clientX);};
-  const onTM=e=>setTy(e.targetTouches[0].clientX);
-  const onTE=()=>{if(!tx||!ty)return;const d=tx-ty;if(d>50)next();if(d<-50)prev();};
+  const onTS = e => {
+  const t = e.targetTouches[0];
+  setTx(t.clientX);
+  setTyStart(t.clientY);
+  setTy(null);
+  setTyEnd(null);
+};
+const onTM = e => {
+  const t = e.targetTouches[0];
+  setTy(t.clientX);
+  setTyEnd(t.clientY);
+};
+const onTE = () => {
+  if (tx===null || ty===null || tyStart===null || tyEnd===null) return;
+  const dx = tx - ty;
+  const dy = tyStart - tyEnd;
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
+  // ✅ ต้องปัดแนวนอน > 60px และต้องชัดเจนกว่าแนวตั้ง 2 เท่า
+  if (absDx < 60) return;
+  if (absDx < absDy * 2) return;
+  if (dx > 50) next();
+  else if (dx < -50) prev();
+};
 
   const login = async e=>{
     e.preventDefault();setError('');setWarnMsg('');setLoading(true);
@@ -2219,23 +2312,29 @@ if (/^\d+$/.test(u)) {
   }
 }
 
-    const rows = [];
-    const seen = new Set();
-    for (const v of variants) {
-      try {
-        const sn = await getDocs(
-          query(collection(db, 'data'), where('username', '==', v))
-        );
-        sn.forEach(d => {
-          if (!seen.has(d.id)) {
-            seen.add(d.id);
-            rows.push({ id: d.id, ...d.data() });
-          }
-        });
-      } catch (qErr) {
-        console.warn('Query failed for variant:', v, qErr);
-      }
+const rows = [];
+const seen = new Set();
+
+// ✅ Parallel query — ส่งทุก variant พร้อมกัน เร็วขึ้น 5-10 เท่า
+const variantQueries = [...variants].map(v =>
+  getDocs(query(collection(db, 'data'), where('username', '==', v)))
+    .then(sn => ({ variant: v, snapshot: sn }))
+    .catch(err => {
+      console.warn('Query failed for variant:', v, err);
+      return null;
+    })
+);
+
+const variantResults = await Promise.all(variantQueries);
+variantResults.forEach(result => {
+  if (!result) return;
+  result.snapshot.forEach(d => {
+    if (!seen.has(d.id)) {
+      seen.add(d.id);
+      rows.push({ id: d.id, ...d.data() });
     }
+  });
+});
 // ─── FALLBACK: ดึง records พิเศษ (สรุปค่าน้ำมัน + วงเงินค่ารักษา) ───
 // records พวกนี้ admin มัก import แยกและอาจเก็บ username ใน format แปลก
 // (เช่น "1.0", "0001.0") — ดึงมาทั้ง sheet แล้ว match ฝั่ง client
@@ -2259,23 +2358,28 @@ const normalizeUser = (val) => {
 };
 const myNormalized = normalizeUser(u);
 
-for (const sheetName of fallbackSheets) {
-  try {
-    const sn = await getDocs(
-      query(collection(db, 'data'), where('sheet_name', '==', sheetName))
-    );
-    sn.forEach(d => {
-      const data = d.data();
-      if (normalizeUser(data.username) === myNormalized && !seen.has(d.id)) {
-        seen.add(d.id);
-        rows.push({ id: d.id, ...data });
-        console.log(`[FALLBACK] เจอ "${sheetName}" username="${data.username}" (normalized="${normalizeUser(data.username)}")`);
-      }
-    });
-  } catch (qErr) {
-    console.warn('Fallback query failed:', sheetName, qErr);
-  }
-}
+// ✅ Parallel fallback query
+const fallbackQueries = fallbackSheets.map(sheetName =>
+  getDocs(query(collection(db, 'data'), where('sheet_name', '==', sheetName)))
+    .then(sn => ({ sheetName, snapshot: sn }))
+    .catch(err => {
+      console.warn('Fallback query failed:', sheetName, err);
+      return null;
+    })
+);
+
+const fallbackResults = await Promise.all(fallbackQueries);
+fallbackResults.forEach(result => {
+  if (!result) return;
+  result.snapshot.forEach(d => {
+    const data = d.data();
+    if (normalizeUser(data.username) === myNormalized && !seen.has(d.id)) {
+      seen.add(d.id);
+      rows.push({ id: d.id, ...data });
+      console.log(`[FALLBACK] เจอ "${result.sheetName}" username="${data.username}"`);
+    }
+  });
+});
 rows.sort((a, b) => getTimestamp(b.uploaded_at) - getTimestamp(a.uploaded_at));
 
 // ── DEBUG LOG: เปิด DevTools (F12) → Console เพื่อดูข้อมูล ──
@@ -2608,6 +2712,30 @@ if (sec.isFuelCalc) {
       </div>
     </div>
   );
+  {/* ปุ่มเปิดในเบราว์เซอร์ — แสดงเฉพาะเมื่อเปิดจาก LINE/Facebook in-app browser */}
+{typeof window !== 'undefined' && /Line|FBAN|FBAV|Instagram/i.test(navigator.userAgent) && (
+  <button
+    type="button"
+    onClick={() => {
+      const url = window.location.href;
+      // LINE: ใช้ openExternalBrowser=1
+      if (/Line/i.test(navigator.userAgent)) {
+        window.location.href = url + (url.includes('?') ? '&' : '?') + 'openExternalBrowser=1';
+      } else {
+        window.open(url, '_system');
+      }
+    }}
+    style={{
+      width:'100%', marginTop:10, padding:'10px 0',
+      background:'transparent', border:'1.5px dashed #cbd5e1',
+      borderRadius:T.lg_r, color:T.slate500,
+      fontSize:T.sm, fontWeight:T.semibold,
+      display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+    }}
+  >
+    📱 เปิดในเบราว์เซอร์ (ลบแถบดำ)
+  </button>
+)}
 
   // ══════════════════════════════════════════════════════════════════════════
   // DASHBOARD
