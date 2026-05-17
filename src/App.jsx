@@ -13,15 +13,17 @@ import { getFirestore, collection, getDocs, query,
          where, doc, updateDoc, addDoc }                from 'firebase/firestore';
 // ─── Firebase ────────────────────────────────────────────────────────────────
 const FB = {
-  apiKey:'AIzaSyAO7H5xZ191HJ9T4BAL7F9vIndapKGYuYk',
-  authDomain:'sango-thai.firebaseapp.com', projectId:'sango-thai',
-  storageBucket:'sango-thai.firebasestorage.app', messagingSenderId:'32641591329',
-  appId:'1:32641591329:web:b0cc997ded1c00fb1e1b60',
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
 };
 let auth, db;
 try { const a=initializeApp(FB); auth=getAuth(a); db=getFirestore(a); } catch(e){}
 
-const GAS = 'https://script.google.com/macros/s/AKfycbyvlLrOjXETOX9dTnG3T2QNVPAOm08R5aWjjJV0ztJhDsxeZRKGvCWlJ5k3ExWjACX5uw/exec';
+const GAS = import.meta.env.VITE_GAS_URL;
 // ─── Analytics (เปิด ปิดการเก็บข้อมูล) ───────────────────────────────────────────────────────────────
 // ต้องการเปิด  → true
 // ต้องการปิด   → false  (แก้ค่านี้อย่างเดียว แล้ว deploy ใหม่)
