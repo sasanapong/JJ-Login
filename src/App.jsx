@@ -2076,14 +2076,13 @@ const logEvent = async (username, eventType, welfareName = null) => {
       const cur = JSON.parse(localStorage.getItem(LOG_DEDUP_KEY) || '{}');
       delete cur[dedupKey];
       localStorage.setItem(LOG_DEDUP_KEY, JSON.stringify(cur));
-     } catch {}
+    } catch {}
   }
 };
 
 const vib = (ms = 40) => {
   if (navigator?.vibrate) navigator.vibrate(ms);
 };
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ─── Toast Component ─────────────────────────────────────────────────────────
@@ -2140,7 +2139,7 @@ export default function App() {
       viewport.name = 'viewport';
       document.head.appendChild(viewport);
     }
-    viewport.content = 'width=device-width, initial-scale=1.0, viewport-fit=cover';
+    viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover';
   }, []);
   const [editMode,  setEditMode]  = useState(null);
   const [editBuf,   setEditBuf]   = useState({});
