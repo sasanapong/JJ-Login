@@ -40,6 +40,54 @@ const GAS = import.meta.env.VITE_GAS_URL;
 // ต้องการปิด   → false  (แก้ค่านี้อย่างเดียว แล้ว deploy ใหม่)
 const ANALYTICS_ENABLED    = true;
 const ANALYTICS_COLLECTION = 'usage_logs';
+// ─── Auto-Logout (Idle Timeout) ──────────────────────────────────────────────
+// เปิด/ปิด: true = ใช้งาน, false = ปิด
+const IDLE_LOGOUT_ENABLED = true;
+// เวลานับถอยหลังหลังไม่มีการเครื่อนไหว (มิลลิวินาที)
+// 5 นาที = 5 * 60 * 1000 = 300000
+const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+
+// ─── Browser Guard (อนุญาตเฉพาะ Safari / Chrome / LINE) ────────────────────
+// เปิด/ปิดระบบทั้งหมด: true = ตรวจสอบ, false = ปล่อยผ่านทุก browser
+// แก้ค่านี้อย่างเดียวจากหลังบ้าน แล้ว deploy ใหม่
+const BROWSER_GUARD_ENABLED = true;
+
+// แก้ true/false ได้ตามต้องการ — อนุญาตให้เข้าเฉพาะ browser ที่ติ๊ก true
+const ALLOWED_BROWSERS = {
+  safari: false,   // Safari (iOS / macOS)
+  chrome: false,   // Chrome / Chromium / Edge (Desktop & Mobile)
+  line:   true,   // LINE in-app browser
+};
+
+// ─── Browser Detection ──────────────────────────────────────────────────────
+// คืนค่า: 'safari' | 'chrome' | 'line' | 'facebook' | 'instagram' | 'tiktok' | 'other'
+const detectBrowser = () => {
+  if (typeof navigator === 'undefined') return 'other';
+  const ua = navigator.userAgent || '';
+
+  // เช็ค in-app browser ที่ต้องบล็อกก่อน (เพราะบางตัวฝัง Chrome UA ในตัว)
+  if (/FBAN|FBAV|FBIOS|FB_IAB/i.test(ua))            return 'facebook';
+  if (/Instagram/i.test(ua))                          return 'instagram';
+  if (/TikTok|musical_ly|BytedanceWebview/i.test(ua)) return 'tiktok';
+
+  // LINE (อนุญาต)
+  if (/Line/i.test(ua)) return 'line';
+
+  // Chrome / Chromium-based (Edge, Brave, Opera, Samsung) — ต้องเช็คก่อน Safari
+  // เพราะ UA ของ Chrome มีคำว่า "Safari" อยู่ด้วย
+  if (/CriOS|Chrome|EdgiOS|Edg|OPR|SamsungBrowser/i.test(ua)) return 'chrome';
+
+  // Safari แท้
+  if (/Safari/i.test(ua) && !/Chrome|CriOS/i.test(ua)) return 'safari';
+
+  return 'other';
+};
+
+const isBrowserAllowed = () => {
+  if (!BROWSER_GUARD_ENABLED) return true;
+  const b = detectBrowser();
+  return ALLOWED_BROWSERS[b] === true;
+};
 // ─── Login Lockout Helper ────────────────────────────────────────────────────
 // ⚠️ NOTE: Lockout นี้เก็บใน localStorage = ผู้ใช้ clear ได้ → เป็นแค่ UX guard
 // ไม่ใช่ security จริง — ต้องเปิด Firebase App Check + Email Enumeration Protection
@@ -2088,7 +2136,119 @@ function Toast({ message, type = 'success', onClose }) {
     </div>
   );
 }
+// ─── BlockedBrowserScreen ──────────────────────────────────────────────────
+// แสดงเมื่อผู้ใช้เปิดด้วย browser ที่ไม่อนุญาต
+function BlockedBrowserScreen() {
+  const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+
+  const copyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(currentUrl);
+      alert('คัดลอกลิงก์แล้ว ✅\nนำไปวางในเบราว์เซอร์ Safari หรือ Chrome');
+    } catch {
+      // fallback สำหรับ in-app browser ที่ block clipboard
+      const input = document.createElement('input');
+      input.value = currentUrl;
+      document.body.appendChild(input);
+      input.select();
+      try { document.execCommand('copy'); alert('คัดลอกลิงก์แล้ว ✅'); }
+      catch { alert('กรุณากดค้างที่ URL ด้านบนเพื่อคัดลอก'); }
+      document.body.removeChild(input);
+    }
+  };
+
+  return (
+    <div style={{
+      minHeight: '100dvh',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 24,
+      background: 'linear-gradient(150deg,#fff7ed,#fef3c7 50%,#fef9c3)',
+    }}>
+      <style>{CSS}</style>
+      <div className="aFU" style={{
+        maxWidth: 420, width: '100%',
+        background: '#fff',
+        borderRadius: T['2xl_r'],
+        padding: '32px 26px',
+        boxShadow: '0 20px 50px rgba(0,0,0,.10)',
+        border: '1px solid #fde68a',
+        textAlign: 'center',
+      }}>
+        <div style={{
+          width: 72, height: 72, borderRadius: 22,
+          background: 'linear-gradient(135deg,#f59e0b,#fb923c)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 18px',
+          boxShadow: '0 12px 28px rgba(245,158,11,.35)',
+        }}>
+          <AlertTriangle size={32} color="#fff" />
+        </div>
+
+        <h1 style={{
+          fontSize: T['2xl'], fontWeight: T.black, color: T.slate800,
+          marginBottom: 8, lineHeight: 1.3,
+        }}>
+          ไม่สามารถเปิดในเบราว์เซอร์นี้ได้
+        </h1>
+
+        <p style={{
+          fontSize: T.base, fontWeight: T.medium, color: T.slate500,
+          lineHeight: 1.7, marginBottom: 20,
+        }}>
+          กรุณาเปิดด้วยเบราว์เซอร์ที่รองรับ:<br/>
+          <span style={{ fontWeight: T.bold, color: T.slate700 }}>
+            Safari • Chrome • LINE
+          </span>
+        </p>
+
+        <div style={{
+          background: '#f8fafc',
+          borderRadius: T.lg_r,
+          padding: '14px 16px',
+          marginBottom: 18,
+          border: '1px solid #e2e8f0',
+          textAlign: 'left',
+        }}>
+          <p style={{
+            fontSize: T.xs, fontWeight: T.bold, color: T.slate400,
+            textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8,
+          }}>
+            วิธีเปิดในเบราว์เซอร์
+          </p>
+          <p style={{
+            fontSize: T.sm, color: T.slate600, lineHeight: 1.7, margin: 0,
+          }}>
+            <strong>1.</strong> กดปุ่ม "คัดลอกลิงก์" ด้านล่าง<br/>
+            <strong>2.</strong> เปิดแอป Safari หรือ Chrome<br/>
+            <strong>3.</strong> วางลิงก์ในแถบ URL แล้วกด Enter
+          </p>
+        </div>
+
+        <button onClick={copyUrl} style={{
+          width: '100%', padding: '13px 0',
+          background: 'linear-gradient(135deg,#6366f1,#3b82f6)',
+          color: '#fff',
+          borderRadius: T.xl_r,
+          fontSize: T.md, fontWeight: T.bold,
+          boxShadow: '0 8px 20px rgba(99,102,241,.30)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        }}>
+          📋 คัดลอกลิงก์
+        </button>
+
+        <p style={{
+          fontSize: T.xs, color: T.slate400, fontWeight: T.medium,
+          marginTop: 16, wordBreak: 'break-all',
+        }}>
+          {currentUrl}
+        </p>
+      </div>
+    </div>
+  );
+}
 export default function App() {
+    const [browserOk] = useState(() => isBrowserAllowed());
+  if (!browserOk) return <BlockedBrowserScreen />;
   const [view,      setView]      = useState('login');
   const [loading,   setLoading]   = useState(false);
   const [dataLoad,  setDataLoad]  = useState(false);
@@ -2133,13 +2293,61 @@ export default function App() {
       window.open(url, '_system');
     }
   }, []);
-  const [editMode,  setEditMode]  = useState(null);
+
+const [editMode,  setEditMode]  = useState(null);
   const [editBuf,   setEditBuf]   = useState({});
   const [saveLoad,  setSaveLoad]  = useState(false);
   const [loginShake, setLoginShake] = useState(false);
   const [warnMsg, setWarnMsg] = useState('');
-  const [toast, setToast] = useState({ message: '', type: 'success' });   // ← เพิ่ม
-  
+  const [toast, setToast] = useState({ message: '', type: 'success' });
+
+  // ─── Auto-Logout: ล็อกเอ้าอัตโนมัติเมื่อไม่มีการเครื่อนไหว ──────────────
+  React.useEffect(() => {
+    if (!IDLE_LOGOUT_ENABLED) return;
+    if (view !== 'dash') return;
+    if (!user) return;
+
+    let timeoutId;
+
+    const handleIdleLogout = () => {
+      try {
+        sessionStorage.setItem('idle_logout_flag', '1');
+      } catch {}
+      logout();
+    };
+
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(handleIdleLogout, IDLE_TIMEOUT_MS);
+    };
+
+    const events = [
+      'mousedown', 'mousemove', 'keydown',
+      'scroll', 'touchstart', 'touchmove', 'click',
+    ];
+
+    events.forEach(e =>
+      window.addEventListener(e, resetTimer, { passive: true })
+    );
+
+    resetTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      events.forEach(e => window.removeEventListener(e, resetTimer));
+    };
+  }, [view, user]);
+
+  // ─── เช็ค flag idle logout ตอน mount หน้า login ──────────────────────────
+  React.useEffect(() => {
+    if (view !== 'login') return;
+    try {
+      if (sessionStorage.getItem('idle_logout_flag') === '1') {
+        sessionStorage.removeItem('idle_logout_flag');
+        setWarnMsg('คุณถูกออกจากระบบอัตโนมัติเนื่องจากไม่มีการใช้งานเกิน 5 นาที');
+      }
+    } catch {}
+  }, [view]);
 
   const [tx,setTx]=useState(null);
 const [ty,setTy]=useState(null);
